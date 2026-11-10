@@ -19,10 +19,19 @@ class Product:
         Product.next_id += 1
 
 
-    # TODO [힌트 2 / 캡슐화]: 결제할 때 재고를 바꾸는 동작을
-    # Product의 메서드로 만들 수 있을까?
-    # 예: 구매 수량이 재고보다 많은 경우를 먼저 확인해야 해.
-    # 지금은 아직 구현하지 않아도 돼.
+# 상품 재고를 감소시키는 메서드
+# self: 현재 상품 객체
+# quantity: 구매하려는 수량
+    def decrease_stock(self, quantity):
+    # 1. 현재 재고보다 구매 수량이 많으면 결제 불가
+        if self.stock < quantity:
+            print("재고가 부족합니다.")
+            return False
+    
+    # 재고가 충분하면 구매 수량만큼 감소
+        self.stock -= quantity
+    # 재고 감소에 성공했다는 결과 반환하기
+        return True
         
 
 # 객체 생성: Product 클래스를 이용해 실제 상품 만들기
@@ -36,29 +45,99 @@ product5 = Product("USB 허브", 18000, 4)
 products = [product1, product2, product3, product4, product5]
 
 
-# TODO [힌트 2 / 클래스 간 협력]: 아래 장바구니 함수들이 공유할 저장 공간이 필요해.
-# 우선은 상품 번호와 담긴 수량을 연결하는 딕셔너리부터 떠올려 봐.
-# 예를 들어 {2: 9}는 '2번 상품을 9개 담음'이라는 뜻이야.
-# 최종 과제에서는 이 저장 공간을 Cart 클래스가 관리하도록 발전시켜 보자.
-# TODO: cart = ???
+# 장바구니를 관리하는 Cart 클래스
+class Cart:
+    # 빈 장바구니 만들기
+    def __init__(self):
+        self.items = {}
 
-# TODO [힌트 2 / 클래스 설계]: 과제에는 여러 클래스의 협력이 필요해.
-# Cart 클래스: 담기 / 빼기 / 상품 합계 / 장바구니 비우기를 담당
+
+    # 장바구니에 상품 추가
+    def add(self, product_id, quantity):
+        # 이미 장바구니에 담긴 수량 확인
+        already = self.items.get(product_id, 0)
+
+        # 기존 수량에 새 수량 더하기
+        self.items[product_id] = already + quantity
+
+    # 장바구니에서 상품 삭제
+    def remove(self, product_id):
+        if product_id in self.items:
+            del self.items[product_id]
+            return True
+        return False
+
+    # 장바구니 상품 합계 계산
+    def total(self, products):
+        total = 0
+
+        for product_id, quantity in self.items.items():
+            # products는 Product 객체들의 리스트
+            product = products[product_id - 1]
+            total += product.price * quantity
+
+        return total
+
+    # 장바구니 전체 비우기
+    def clear(self):
+        self.items.clear()
+
+# 장바구니 객체 생성
+cart = Cart()
+
+
+
+
 # Discount 부모 클래스: discount_amount(상품 합계)의 기본값은 0
-# RateDiscount 자식 클래스: 비율 할인, 최대 5,000원 / 원 미만 버림
-# FixedDiscount 자식 클래스: 조건부 정액 할인
-# '상속'은 부모 클래스의 공통 틀을 가져오는 것,
-# '오버라이딩'은 자식이 같은 이름의 메서드를 다르게 만드는 것이야.
-# 처음부터 다 만들지 말고 아래의 '담기'를 먼저 완성해도 좋아.
+class Discount:
+    # 할인하지 않는 기본 쿠폰
+    def discount_amount(self, total):
+        return 0
+    
 
-# STEP 4. 할인 클래스 설계 (별도로 클래스 정의 필요)
-# TODO [힌트 2 / 상속]: Discount 부모 클래스 만들기
-# TODO [힌트 2 / 상속]: RateDiscount 자식 클래스 만들기
-# TODO [힌트 2 / 상속]: FixedDiscount 자식 클래스 만들기
-#
-# 힌트: 자식 클래스는 부모 클래스를 상속받을 수 있어.
-# 힌트: 세 클래스에 discount_amount() 메서드를 정의해 보자.
-# 같은 이름의 메서드가 클래스마다 다르게 동작하면?
+# RateDiscount 자식 클래스: 비율 할인, 최대 5,000원 / 원 미만 버림
+class RateDiscount(Discount):
+    # 상품 합계의 10% 할인 (최대 5,0000원)
+    def discount_amount(self, total):
+        return min(int(total * 0.1), 5000)
+    
+
+# FixedDiscount 자식 클래스: 조건부 정액 할인
+class FixedDiscount(Discount):
+    # 상품 합계가 20,000원 이상이면 3000원 할인
+    def discount_amount(self, total):
+        if total >= 20000:
+            return 3000
+        return 0
+
+
+    
+# 할인 쿠폰 선택
+def select_coupon():
+    print("1. 쿠폰 없음")
+    print("2. 10% 할인 (최대 5,000원)")
+    print("3. 3,000원 할인 (20,000원 이상 구매 시)")
+
+    coupon_number = input("쿠폰 번호:")
+
+    if coupon_number == "1":
+        print("적용할 쿠폰이 없습니다.")
+        return Discount()
+
+    elif coupon_number == "2":
+        print("[10% 할인 (최대 5,000원)] 쿠폰을 적용했습니다.")
+        return RateDiscount()
+
+    elif coupon_number == "3":
+        print("[3,000원 할인 (20,000원 이상 구매 시)] 쿠폰을 적용했습니다.")
+        return FixedDiscount()
+
+    else:
+        print("올바른 쿠폰 번호를 입력하세요.")
+        return None
+
+selected_coupon = Discount() 
+
 
 
 
@@ -68,10 +147,9 @@ def show_products():
     for product in products:
         # 재고가 없을 경우
         if product.stock == 0:
-            print(f"{product.id}. {product.name} {product.price}원 (품절)")
+            print(f"{product.id}. {product.name} {product.price:>3}원 (품절)")
         else:
-            print(f"{product.id}. {product.name} {product.price}원 (재고 {product.stock}개)")
-    # TODO [힌트 1]: 여유가 있으면 가격을 89,000원처럼 표시해 보자.
+            print(f"{product.id}. {product.name} {product.price:>3}원 (재고 {product.stock}개)")
 
 
 # 2. 담기 출력
@@ -85,12 +163,17 @@ def add_cart():
 
     # 상품 번호가 존재하는 지 확인
     if product_id in ("1", "2", "3", "4", "5"):
-        product_id = int(product_id)            
+        product_id = int(product_id)
+        return
 
+    else:
+        print("1부터 5 중에서 입력하세요.")
+        return False
+    
     # TODO [힌트 2 / 중요]: 번호가 올바르지 않으면 아래 for문으로 내려가지
-    # 않도록 처리해야 해. 위 if문과 짝이 되는 분기를 생각해 보자.
+    # 않도록 처리해야 해. 위 if문과 짝이 되는 분기를 생각해 보기.
     # 안내 메시지를 출력한 뒤 함수를 즉시 끝내려면 이전에 배운 키워드 활용!
-    # 예: "abc", "7", "" 입력도 직접 테스트해 봐.
+    # 예: "abc", "7", "" 입력도 직접 테스트해 보기.
 
 
     # 입력한 번호와 일치하는 상품 찾기
@@ -105,11 +188,17 @@ def add_cart():
             quantity = input("수량: ").strip()
 
             # TODO [힌트 2]: 입력한 수량이 양의 정수인지 확인하기
+            if not quantity.stock() or int(quantity) <= 0:
+                print("올바른 수량을 입력해 주세요.")
+                return
+            quantity = stock(quantity)
+
             # 문자, 0, 음수를 입력하면 어떻게 처리할까?
             # 검사를 통과한 뒤 정수로 변환하기
 
             # TODO [힌트 2]: 장바구니에 이미 담긴 수량 확인하기
             # 처음 담는 상품이라면 기존 수량은 0개
+            already = cart.get()
 
             # TODO [힌트 1]: 추가 가능 수량 계산하기
             # 현재 재고 - 이미 담긴 수량
@@ -132,7 +221,7 @@ def remove_cart():
     # TODO [힌트 1]: 담긴 상품을 보여주고 삭제할 상품 번호 입력받기
     # TODO [힌트 2]: 입력한 상품 번호가 딕셔너리에 있는지 확인하기
     # TODO [힌트 2]: 해당 상품의 기록을 딕셔너리에서 없애기
-    # 이 과제에서 '빼기'는 수량 1 감소가 아니라 상품 전체 제거야.
+    # 이 과제에서 '빼기'는 수량 1 감소가 아니라 상품 전체 제거.
     pass
 
 
@@ -155,7 +244,7 @@ def shopping_cart():
     # 그보다 작으면 3,000원 (단, 빈 장바구니는 배송비 0원)
     # TODO [힌트 1]: 결제 금액 = 상품 합계 - 할인 + 배송비
     # TODO [힌트 2]: 공통 계산을 나중에 함수/메서드로 분리하면
-    # 영수증을 출력하는 payment()에서 같은 계산을 다시 쓸 수 있어.
+    # 영수증을 출력하는 payment()에서 같은 계산을 다시 쓸 수 있음.
     # 화면 예시:
     # ----------------------------------------
     # 텀블러      x 9        135,000원
